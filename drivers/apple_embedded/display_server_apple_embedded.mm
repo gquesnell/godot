@@ -44,6 +44,15 @@
 
 #import <GameController/GameController.h>
 
+// Points -> pixels at a (possibly fractional) screen scale. `Size2i * float`
+// would truncate the scale to an integer (Vector2i only multiplies by int32),
+// which is wrong whenever UIScreen.nativeScale is fractional (iOS Display
+// Zoom: 3.684 on an iPhone 14 Pro). Round like Core Animation sizes the
+// backing store.
+static Size2i _points_to_pixels(CGSize p_points, float p_scale) {
+	return Size2i(Math::round(p_points.width * p_scale), Math::round(p_points.height * p_scale));
+}
+
 static const float kDisplayServerIOSAcceleration = 1.f;
 
 DisplayServerAppleEmbedded *DisplayServerAppleEmbedded::get_singleton() {
@@ -135,7 +144,7 @@ DisplayServerAppleEmbedded::DisplayServerAppleEmbedded(const String &p_rendering
 			return;
 		}
 
-		Size2i size = Size2i(layer.bounds.size.width, layer.bounds.size.height) * screen_get_max_scale();
+		Size2i size = _points_to_pixels(layer.bounds.size, screen_get_max_scale());
 		rendering_context->window_set_size(MAIN_WINDOW_ID, size.width, size.height);
 		rendering_context->window_set_vsync_mode(MAIN_WINDOW_ID, p_vsync_mode);
 
@@ -483,8 +492,8 @@ Rect2i DisplayServerAppleEmbedded::get_display_safe_area() const {
 		insets = [view safeAreaInsets];
 	}
 	float scale = screen_get_scale();
-	Size2i insets_position = Size2i(insets.left, insets.top) * scale;
-	Size2i insets_size = Size2i(insets.left + insets.right, insets.top + insets.bottom) * scale;
+	Size2i insets_position = _points_to_pixels(CGSizeMake(insets.left, insets.top), scale);
+	Size2i insets_size = _points_to_pixels(CGSizeMake(insets.left + insets.right, insets.top + insets.bottom), scale);
 	return Rect2i(screen_get_position() + insets_position, screen_get_size() - insets_size);
 }
 
@@ -515,7 +524,7 @@ Size2i DisplayServerAppleEmbedded::screen_get_size(int p_screen) const {
 		return Size2i();
 	}
 
-	return Size2i(layer.bounds.size.width, layer.bounds.size.height) * screen_get_scale(p_screen);
+	return _points_to_pixels(layer.bounds.size, screen_get_scale(p_screen));
 }
 
 Rect2i DisplayServerAppleEmbedded::screen_get_usable_rect(int p_screen) const {
@@ -613,7 +622,7 @@ void DisplayServerAppleEmbedded::window_set_size(const Size2i p_size, WindowID p
 
 Size2i DisplayServerAppleEmbedded::window_get_size(WindowID p_window) const {
 	CGRect viewBounds = GDTAppDelegateService.viewController.view.bounds;
-	return Size2i(viewBounds.size.width, viewBounds.size.height) * screen_get_max_scale();
+	return _points_to_pixels(viewBounds.size, screen_get_max_scale());
 }
 
 Size2i DisplayServerAppleEmbedded::window_get_size_with_decorations(WindowID p_window) const {
@@ -753,7 +762,7 @@ void DisplayServerAppleEmbedded::virtual_keyboard_hide() {
 }
 
 void DisplayServerAppleEmbedded::virtual_keyboard_set_height(int height) {
-	virtual_keyboard_height = height * screen_get_max_scale();
+	virtual_keyboard_height = Math::round(height * screen_get_max_scale());
 }
 
 int DisplayServerAppleEmbedded::virtual_keyboard_get_height() const {
@@ -787,7 +796,7 @@ bool DisplayServerAppleEmbedded::screen_is_kept_on() const {
 }
 
 void DisplayServerAppleEmbedded::resize_window(CGSize viewSize) {
-	Size2i size = Size2i(viewSize.width, viewSize.height) * screen_get_max_scale();
+	Size2i size = _points_to_pixels(viewSize, screen_get_max_scale());
 
 #if defined(RD_ENABLED)
 	if (rendering_context) {
