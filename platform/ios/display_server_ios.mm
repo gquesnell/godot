@@ -116,5 +116,7 @@ float DisplayServerIOS::screen_get_scale(int p_screen) const {
 	int screen_count = get_screen_count();
 	ERR_FAIL_INDEX_V(p_screen, screen_count, 1.0f);
 
-	return [UIScreen mainScreen].scale;
+	// Must match the scale the view renders at (see `godot_commonInit`):
+	// window/screen sizes are computed as points * this value.
+	return [UIScreen mainScreen].nativeScale;
 }

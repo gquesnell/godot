@@ -123,7 +123,12 @@ static const float earth_gravity = 9.80665;
 	self.useCADisplayLink = bool(GLOBAL_DEF("display.AppleEmbedded/use_cadisplaylink", true)) ? YES : NO;
 
 #if !defined(VISIONOS_ENABLED)
-	self.contentScaleFactor = [UIScreen mainScreen].scale;
+	// Render at the physical panel's resolution rather than the logical
+	// (Display Zoom-dependent) scale, so the compositor presents 1:1 instead of
+	// resampling the whole frame. `nativeScale` == `scale` in Default mode;
+	// touch coordinates already multiply by `contentScaleFactor`, and
+	// `DisplayServerIOS::screen_get_scale` reports the same value.
+	self.contentScaleFactor = [UIScreen mainScreen].nativeScale;
 #endif
 
 	if (@available(iOS 17.0, *)) {
